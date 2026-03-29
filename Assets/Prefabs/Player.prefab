@@ -321,10 +321,11 @@ MonoBehaviour:
   moveAction: {fileID: -1680190386980627800, guid: 2bcd2660ca9b64942af0de543d8d7100, type: 3}
   jumpAction: {fileID: -2099379676528639254, guid: 2bcd2660ca9b64942af0de543d8d7100, type: 3}
   dashAction: {fileID: -7471211009204490832, guid: 2bcd2660ca9b64942af0de543d8d7100, type: 3}
+  attackAction: {fileID: 1120369429361536294, guid: 2bcd2660ca9b64942af0de543d8d7100, type: 3}
   rb: {fileID: 7448650922203479109}
   spriteRenderer: {fileID: 1299305448740756753}
   playerCollider: {fileID: 4860450815430185897}
-  animator: {fileID: 0}
+  animator: {fileID: 439641717255869601}
   moveSpeed: 8
   acceleration: 80
   deceleration: 100
@@ -333,6 +334,7 @@ MonoBehaviour:
   inputDeadzoneExit: 0.04
   minStartSpeed: 1.2
   wallCheckDistance: 0.08
+  stopDecelerationMultiplier: 0.6
   groundedMaterial: {fileID: 0}
   noFrictionMaterial: {fileID: 0}
   jumpForce: 7
@@ -356,6 +358,11 @@ MonoBehaviour:
   runSpeedThreshold: 0.1
   runOnlyWhenGrounded: 1
   useAnimatorGroundedForAnimation: 0
+  useAnimatorForAnimation: 1
+  runAnimSpeedMin: 0.25
+  runAnimSpeedMax: 1
+  runAnimLerpRate: 12
+  stopCoastTime: 0.08
 --- !u!95 &439641717255869601
 Animator:
   serializedVersion: 7

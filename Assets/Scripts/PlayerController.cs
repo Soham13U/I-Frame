@@ -5,10 +5,15 @@ public class PlayerController : MonoBehaviour
 {
 	private static readonly int AnimatorSpeed = Animator.StringToHash("Speed");
 	private static readonly int AnimatorGrounded = Animator.StringToHash("Grounded");
+	private static readonly int AnimatorVerticalSpeed = Animator.StringToHash("VerticalSpeed");
+	private static readonly int AnimatorSwing = Animator.StringToHash("Swing");
+	private static readonly int AnimatorSwingVariant = Animator.StringToHash("SwingVariant");
+	private static readonly int AnimatorRunSpeedMult = Animator.StringToHash("RunSpeedMultiplier");
     [Header("Input")]
     [SerializeField] private InputActionReference moveAction;
     [SerializeField] private InputActionReference jumpAction;
     [SerializeField] private InputActionReference dashAction;
+	[SerializeField] private InputActionReference attackAction;
 
     [Header("References")]
     [SerializeField] private Rigidbody2D rb;
@@ -25,6 +30,7 @@ public class PlayerController : MonoBehaviour
 	[SerializeField] private float inputDeadzoneExit = 0.04f;
 	[SerializeField] private float minStartSpeed = 1.2f;
 	[SerializeField] private float wallCheckDistance = 0.08f;
+	[SerializeField] private float stopDecelerationMultiplier = 0.6f;
 
 	[Header("Physics Materials")]
 	[SerializeField] private PhysicsMaterial2D groundedMaterial;
@@ -57,8 +63,15 @@ public class PlayerController : MonoBehaviour
 	[SerializeField] private bool runOnlyWhenGrounded = true;
 	[SerializeField] private bool useAnimatorGroundedForAnimation = false;
 
+	[Header("Animation (Animator)")]
+	[SerializeField] private bool useAnimatorForAnimation = true;
+	[SerializeField] private float runAnimSpeedMin = 0.25f;
+	[SerializeField] private float runAnimSpeedMax = 1.0f;
+	[SerializeField] private float runAnimLerpRate = 12f;
+
 	private float moveInput;
 	private float moveInputFiltered;
+	private float prevMoveInput;
     private bool facingRight = true;
 
     private bool isGrounded;
@@ -80,6 +93,11 @@ public class PlayerController : MonoBehaviour
 	private float idleAnimTimer;
 	private int idleAnimIndex;
 	private bool wasRunning;
+	private float currentRunAnimSpeed = 1f;
+	private float stopCoastTimer;
+
+	[Header("Stopping Feel")]
+	[SerializeField] private float stopCoastTime = 0.08f;
 
     private void Awake()
     {
@@ -102,6 +120,7 @@ public class PlayerController : MonoBehaviour
         moveAction.action.Enable();
         jumpAction.action.Enable();
         dashAction.action.Enable();
+		if (attackAction != null) attackAction.action.Enable();
 
         jumpAction.action.performed += OnJumpPerformed;
         jumpAction.action.canceled += OnJumpCanceled;
@@ -115,6 +134,7 @@ public class PlayerController : MonoBehaviour
         moveAction.action.Disable();
         jumpAction.action.Disable();
         dashAction.action.Disable();
+		if (attackAction != null) attackAction.action.Disable();
     }
 
     private void Update()
@@ -124,12 +144,26 @@ public class PlayerController : MonoBehaviour
         CheckGrounded();
         HandleJumpLogic();
         HandleSpriteFlip();
-		UpdateSpriteAnimation();
+		if (!useAnimatorForAnimation) UpdateSpriteAnimation();
 		UpdateAnimatorParameters();
+		HandleAttackInput();
 
         jumpPressed = false;
         jumpReleased = false;
     }
+
+	private void HandleAttackInput()
+	{
+		if (attackAction == null || animator == null) return;
+
+		// Left click (or whatever you bind Attack to) triggers a swing variant.
+		if (attackAction.action.triggered)
+		{
+			int variant = Random.Range(1, 3); // 1 or 2
+			animator.SetInteger(AnimatorSwingVariant, variant);
+			animator.SetTrigger(AnimatorSwing);
+		}
+	}
 
     private void FixedUpdate()
     {
@@ -163,6 +197,14 @@ public class PlayerController : MonoBehaviour
 
 		moveInput = moveInputFiltered;
 
+		// Start a brief "extra step" coast when the player releases movement.
+		if (Mathf.Abs(prevMoveInput) > 0.01f && Mathf.Abs(moveInput) <= 0.01f && isGrounded)
+			stopCoastTimer = stopCoastTime;
+		else if (Mathf.Abs(moveInput) > 0.01f)
+			stopCoastTimer = 0f;
+
+		prevMoveInput = moveInput;
+
         if (jumpPressed)
         {
             jumpBufferCounter = jumpBufferTime;
@@ -193,6 +235,9 @@ public class PlayerController : MonoBehaviour
     {
         if (jumpBufferCounter > 0f)
             jumpBufferCounter -= Time.deltaTime;
+
+		if (stopCoastTimer > 0f)
+			stopCoastTimer -= Time.deltaTime;
 
         if (dashCooldownTimer > 0f)
             dashCooldownTimer -= Time.deltaTime;
@@ -252,8 +297,20 @@ public class PlayerController : MonoBehaviour
     private void HandleMovement()
     {
         float targetSpeed = moveInput * moveSpeed;
-        float control = isGrounded ? 1f : airControlMultiplier;
-		float accelRate = (Mathf.Abs(targetSpeed) > 0.05f ? acceleration : deceleration) * control;
+		float control = isGrounded ? 1f : airControlMultiplier;
+		bool braking = Mathf.Abs(targetSpeed) <= 0.05f;
+
+		// During the coast window, don't brake at all (keeps current speed briefly).
+		if (braking && isGrounded && stopCoastTimer > 0f)
+		{
+			targetSpeed = rb.linearVelocity.x;
+			braking = false;
+		}
+
+		float baseAccel = braking ? deceleration : acceleration;
+		// Apply a softer deceleration when stopping to allow a slight coast
+		if (braking && isGrounded) baseAccel *= stopDecelerationMultiplier;
+		float accelRate = baseAccel * control;
 
         float newVelX = Mathf.MoveTowards(rb.linearVelocity.x, targetSpeed, accelRate * Time.fixedDeltaTime);
 
@@ -348,6 +405,24 @@ public class PlayerController : MonoBehaviour
 		float speedX = Mathf.Abs(rb.linearVelocity.x);
 		animator.SetFloat(AnimatorSpeed, speedX);
 		animator.SetBool(AnimatorGrounded, isGrounded);
+		animator.SetFloat(AnimatorVerticalSpeed, rb.linearVelocity.y);
+
+		// Drive run animation speed multiplier based on normalized horizontal speed
+		float normalized = moveSpeed > 0.001f ? Mathf.Clamp01(speedX / moveSpeed) : 0f;
+		float targetMult = Mathf.Lerp(runAnimSpeedMin, runAnimSpeedMax, normalized);
+		currentRunAnimSpeed = Mathf.MoveTowards(currentRunAnimSpeed, targetMult, runAnimLerpRate * Time.deltaTime);
+		if (AnimatorHasParameter(AnimatorRunSpeedMult))
+			animator.SetFloat(AnimatorRunSpeedMult, currentRunAnimSpeed);
+	}
+
+	private bool AnimatorHasParameter(int nameHash)
+	{
+		if (animator == null) return false;
+		foreach (var p in animator.parameters)
+		{
+			if (p.nameHash == nameHash) return true;
+		}
+		return false;
 	}
 
 	private void UpdateSpriteAnimation()
