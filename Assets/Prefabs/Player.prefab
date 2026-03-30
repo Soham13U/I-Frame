@@ -363,6 +363,9 @@ MonoBehaviour:
   runAnimSpeedMax: 1
   runAnimLerpRate: 12
   stopCoastTime: 0.08
+  parryWindowSeconds: 1
+  hp: 5
+  triggerHitAnimationOnDamage: 1
 --- !u!95 &439641717255869601
 Animator:
   serializedVersion: 7

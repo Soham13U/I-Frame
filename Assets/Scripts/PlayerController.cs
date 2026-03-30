@@ -9,6 +9,7 @@ public class PlayerController : MonoBehaviour
 	private static readonly int AnimatorSwing = Animator.StringToHash("Swing");
 	private static readonly int AnimatorSwingVariant = Animator.StringToHash("SwingVariant");
 	private static readonly int AnimatorRunSpeedMult = Animator.StringToHash("RunSpeedMultiplier");
+	private static readonly int AnimatorHit = Animator.StringToHash("Hit");
     [Header("Input")]
     [SerializeField] private InputActionReference moveAction;
     [SerializeField] private InputActionReference jumpAction;
@@ -99,6 +100,14 @@ public class PlayerController : MonoBehaviour
 	[Header("Stopping Feel")]
 	[SerializeField] private float stopCoastTime = 0.08f;
 
+	[Header("Parry / Damage (Prototype)")]
+	[SerializeField] private float parryWindowSeconds = 0.2f;
+	[SerializeField] private int hp = 5;
+	private bool parryActive;
+	private float parryTimer;
+
+	[SerializeField] private bool triggerHitAnimationOnDamage = true;
+
     private void Awake()
     {
         if (rb == null) rb = GetComponent<Rigidbody2D>();
@@ -162,7 +171,36 @@ public class PlayerController : MonoBehaviour
 			int variant = Random.Range(1, 3); // 1 or 2
 			animator.SetInteger(AnimatorSwingVariant, variant);
 			animator.SetTrigger(AnimatorSwing);
+
+			// Start parry window immediately with the swing (prototype timing).
+			parryActive = true;
+			parryTimer = parryWindowSeconds;
 		}
+	}
+
+	// Exposed for Enemy1 raycast to check parry timing (prototype).
+	public bool IsParrying()
+	{
+		return parryActive;
+	}
+
+	// Temporary placeholder damage logic for the prototype.
+	public void TakeDamage(int amount)
+	{
+		if (amount <= 0) return;
+
+		hp -= amount;
+		if (hp < 0) hp = 0;
+
+		// Play Hit animation on damage (prototype).
+		if (triggerHitAnimationOnDamage && animator != null)
+		{
+			// Avoid warnings if the Animator doesn't have the parameter.
+			if (AnimatorHasTriggerParameter(AnimatorHit))
+				animator.SetTrigger(AnimatorHit);
+		}
+
+		Debug.Log($"Damage Taken: -{amount} | HP now: {hp}", this);
 	}
 
     private void FixedUpdate()
@@ -238,6 +276,14 @@ public class PlayerController : MonoBehaviour
 
 		if (stopCoastTimer > 0f)
 			stopCoastTimer -= Time.deltaTime;
+
+		// Parry window timer (prototype)
+		if (parryActive)
+		{
+			parryTimer -= Time.deltaTime;
+			if (parryTimer <= 0f)
+				parryActive = false;
+		}
 
         if (dashCooldownTimer > 0f)
             dashCooldownTimer -= Time.deltaTime;
@@ -421,6 +467,17 @@ public class PlayerController : MonoBehaviour
 		foreach (var p in animator.parameters)
 		{
 			if (p.nameHash == nameHash) return true;
+		}
+		return false;
+	}
+
+	private bool AnimatorHasTriggerParameter(int nameHash)
+	{
+		if (animator == null) return false;
+		foreach (var p in animator.parameters)
+		{
+			if (p.nameHash != nameHash) continue;
+			return p.type == AnimatorControllerParameterType.Trigger;
 		}
 		return false;
 	}
