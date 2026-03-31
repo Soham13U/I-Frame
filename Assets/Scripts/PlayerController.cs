@@ -108,6 +108,12 @@ public class PlayerController : MonoBehaviour
 
 	[SerializeField] private bool triggerHitAnimationOnDamage = true;
 
+	[Header("Melee (Swing)")]
+	[SerializeField] private LayerMask enemyLayer;
+	[SerializeField] private Vector2 swingHitboxOffset = new Vector2(0.8f, 0f);
+	[SerializeField] private Vector2 swingHitboxSize = new Vector2(1.2f, 1.0f);
+	[SerializeField] private int swingDamage = 1;
+
     private void Awake()
     {
         if (rb == null) rb = GetComponent<Rigidbody2D>();
@@ -201,6 +207,31 @@ public class PlayerController : MonoBehaviour
 		}
 
 		Debug.Log($"Damage Taken: -{amount} | HP now: {hp}", this);
+	}
+
+	/// <summary>
+	/// Animation Event entry point. Add this event to Swing1 and Swing2 at the impact frame.
+	/// </summary>
+	public void OnSwingHitEvent()
+	{
+		Vector2 center = (Vector2)transform.position;
+		Vector2 offset = swingHitboxOffset;
+		offset.x *= facingRight ? 1f : -1f;
+		Vector2 hitboxCenter = center + offset;
+
+		Collider2D[] hits = Physics2D.OverlapBoxAll(hitboxCenter, swingHitboxSize, 0f, enemyLayer);
+		if (hits == null || hits.Length == 0) return;
+
+		for (int i = 0; i < hits.Length; i++)
+		{
+			if (hits[i] == null) continue;
+			EnemyHealth eh = hits[i].GetComponent<EnemyHealth>();
+			if (eh == null) eh = hits[i].GetComponentInParent<EnemyHealth>();
+			if (eh == null) continue;
+
+			Vector2 dir = facingRight ? Vector2.right : Vector2.left;
+			eh.TakeDamage(swingDamage, dir);
+		}
 	}
 
     private void FixedUpdate()
@@ -577,5 +608,12 @@ public class PlayerController : MonoBehaviour
         );
 
         Gizmos.DrawWireCube(boxCenter, boxSize);
+
+		// Draw swing hitbox (attack range) for tuning.
+		Gizmos.color = Color.red;
+		Vector2 offset = swingHitboxOffset;
+		offset.x *= facingRight ? 1f : -1f;
+		Vector3 swingCenter = transform.position + (Vector3)offset;
+		Gizmos.DrawWireCube(swingCenter, (Vector3)swingHitboxSize);
     }
 }

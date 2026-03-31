@@ -12,7 +12,7 @@ GameObject:
   - component: {fileID: 3515492558500910157}
   - component: {fileID: 588320516903049111}
   - component: {fileID: 6660635968587807075}
-  m_Layer: 0
+  m_Layer: 8
   m_Name: Main Camera
   m_TagString: MainCamera
   m_Icon: {fileID: 0}
@@ -151,9 +151,9 @@ GameObject:
   - component: {fileID: 4860450815430185897}
   - component: {fileID: 6761024640721945405}
   - component: {fileID: 439641717255869601}
-  m_Layer: 0
+  m_Layer: 8
   m_Name: Player
-  m_TagString: Untagged
+  m_TagString: Player
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
@@ -363,9 +363,15 @@ MonoBehaviour:
   runAnimSpeedMax: 1
   runAnimLerpRate: 12
   stopCoastTime: 0.08
-  parryWindowSeconds: 1
+  parryWindowSeconds: 0.5
   hp: 5
   triggerHitAnimationOnDamage: 1
+  enemyLayer:
+    serializedVersion: 2
+    m_Bits: 256
+  swingHitboxOffset: {x: 0.8, y: 0}
+  swingHitboxSize: {x: 1.2, y: 1}
+  swingDamage: 1
 --- !u!95 &439641717255869601
 Animator:
   serializedVersion: 7
