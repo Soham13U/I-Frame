@@ -25,6 +25,8 @@ public class Enemy1AI : MonoBehaviour
 	[SerializeField] private Vector2 rayOriginOffset = new Vector2(0.25f, 0f);
 	[SerializeField] private float shootCooldown = 0.8f;
 	[SerializeField] private int damageAmount = 1;
+	[SerializeField] private ParticleSystem muzzleFlashPrefab;
+	[SerializeField] private Vector2 muzzleOffset = new Vector2(0.4f, 0f);
 
 	[Header("Animator Params")]
 	[SerializeField] private string speedParam = "Speed";
@@ -135,6 +137,7 @@ public class Enemy1AI : MonoBehaviour
 		if (!pendingRaycast) return;
 		pendingRaycast = false;
 
+		SpawnMuzzleFlash();
 		PerformRaycastShot();
 	}
 
@@ -158,6 +161,9 @@ public class Enemy1AI : MonoBehaviour
 			if (pc != null && pc.IsParrying())
 			{
 				Debug.Log($"Parried: Enemy1 shot was deflected at {lastHitPoint}", this);
+				if (pc != null) pc.SpawnParrySpark();
+				if (TimeEffects.Instance != null) TimeEffects.Instance.ParrySlowMo();
+				if (CameraShake2D.Instance != null) CameraShake2D.Instance.ShakeDefault();
 			}
 			else
 			{
@@ -173,6 +179,40 @@ public class Enemy1AI : MonoBehaviour
 
 		// Optional: visualize in editor while tuning
 		// Debug.DrawLine(origin, origin + dir * rayDistance, lastShotHitPlayer ? Color.green : Color.red, 0.25f);
+	}
+
+	private void SpawnMuzzleFlash()
+	{
+		if (muzzleFlashPrefab == null) return;
+
+		Vector2 pos = (Vector2)transform.position + new Vector2(muzzleOffset.x * (facingRight ? 1f : -1f), muzzleOffset.y);
+		ParticleSystem ps = Instantiate(muzzleFlashPrefab, pos, Quaternion.identity);
+		ps.Play();
+		Destroy(ps.gameObject, GetParticleLifetimeSeconds(ps));
+	}
+
+	private float GetParticleLifetimeSeconds(ParticleSystem ps)
+	{
+		if (ps == null) return 0.5f;
+		var main = ps.main;
+		float duration = main.duration;
+		float lifetime = 0.5f;
+
+		// Approximate max lifetime depending on startLifetime mode
+		switch (main.startLifetime.mode)
+		{
+			case ParticleSystemCurveMode.Constant:
+				lifetime = main.startLifetime.constant;
+				break;
+			case ParticleSystemCurveMode.TwoConstants:
+				lifetime = main.startLifetime.constantMax;
+				break;
+			default:
+				lifetime = 0.5f;
+				break;
+		}
+
+		return Mathf.Max(0.25f, duration + lifetime);
 	}
 
 	private void SetAnimatorSpeed(float speed)

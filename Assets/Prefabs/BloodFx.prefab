@@ -12,7 +12,7 @@ GameObject:
   - component: {fileID: 3009681222681505042}
   - component: {fileID: 2959038360860335056}
   m_Layer: 0
-  m_Name: Particle System
+  m_Name: BloodFx
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0

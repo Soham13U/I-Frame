@@ -107,6 +107,8 @@ public class PlayerController : MonoBehaviour
 	private float parryTimer;
 
 	[SerializeField] private bool triggerHitAnimationOnDamage = true;
+	[SerializeField] private ParticleSystem parrySparkPrefab;
+	[SerializeField] private Vector2 parrySparkOffset = new Vector2(0.8f, 0f);
 
 	[Header("Melee (Swing)")]
 	[SerializeField] private LayerMask enemyLayer;
@@ -188,6 +190,40 @@ public class PlayerController : MonoBehaviour
 	public bool IsParrying()
 	{
 		return parryActive;
+	}
+
+	// Called by enemy when parry succeeds to spawn spark at the player's sword area.
+	public void SpawnParrySpark()
+	{
+		if (parrySparkPrefab == null) return;
+
+		Vector2 pos = (Vector2)transform.position + new Vector2(parrySparkOffset.x * (facingRight ? 1f : -1f), parrySparkOffset.y);
+		ParticleSystem ps = Instantiate(parrySparkPrefab, pos, Quaternion.identity);
+		ps.Play();
+		Destroy(ps.gameObject, GetParticleLifetimeSeconds(ps));
+	}
+
+	private float GetParticleLifetimeSeconds(ParticleSystem ps)
+	{
+		if (ps == null) return 0.5f;
+		var main = ps.main;
+		float duration = main.duration;
+		float lifetime = 0.5f;
+
+		switch (main.startLifetime.mode)
+		{
+			case ParticleSystemCurveMode.Constant:
+				lifetime = main.startLifetime.constant;
+				break;
+			case ParticleSystemCurveMode.TwoConstants:
+				lifetime = main.startLifetime.constantMax;
+				break;
+			default:
+				lifetime = 0.5f;
+				break;
+		}
+
+		return Mathf.Max(0.25f, duration + lifetime);
 	}
 
 	// Temporary placeholder damage logic for the prototype.
@@ -615,5 +651,12 @@ public class PlayerController : MonoBehaviour
 		offset.x *= facingRight ? 1f : -1f;
 		Vector3 swingCenter = transform.position + (Vector3)offset;
 		Gizmos.DrawWireCube(swingCenter, (Vector3)swingHitboxSize);
+
+		// Draw parry spark spawn point for tuning.
+		Gizmos.color = Color.cyan;
+		Vector2 sparkOffset = parrySparkOffset;
+		sparkOffset.x *= facingRight ? 1f : -1f;
+		Vector3 sparkPos = transform.position + (Vector3)sparkOffset;
+		Gizmos.DrawWireSphere(sparkPos, 0.08f);
     }
 }
