@@ -192,6 +192,26 @@ public class PlayerController : MonoBehaviour
 		return parryActive;
 	}
 
+	/// <summary>
+	/// Called by enemies when an attack would hit the player.
+	/// Returns true if parried (no damage), false if damage was applied.
+	/// </summary>
+	public bool HandleIncomingAttack(Vector2 hitPoint)
+	{
+		if (IsParrying())
+		{
+			SpawnParrySpark();
+			if (PlayerSFX.Instance != null) PlayerSFX.Instance.PlayParryImpact();
+			if (TimeEffects.Instance != null) TimeEffects.Instance.ParrySlowMo();
+			if (CameraShake2D.Instance != null) CameraShake2D.Instance.ShakeDefault();
+			Debug.Log($"Parried at {hitPoint}", this);
+			return true;
+		}
+
+		TakeDamage(1);
+		return false;
+	}
+
 	// Called by enemy when parry succeeds to spawn spark at the player's sword area.
 	public void SpawnParrySpark()
 	{
@@ -258,6 +278,7 @@ public class PlayerController : MonoBehaviour
 		Collider2D[] hits = Physics2D.OverlapBoxAll(hitboxCenter, swingHitboxSize, 0f, enemyLayer);
 		if (hits == null || hits.Length == 0) return;
 
+		bool playedHitSfx = false;
 		for (int i = 0; i < hits.Length; i++)
 		{
 			if (hits[i] == null) continue;
@@ -265,9 +286,24 @@ public class PlayerController : MonoBehaviour
 			if (eh == null) eh = hits[i].GetComponentInParent<EnemyHealth>();
 			if (eh == null) continue;
 
+			// Play hit impact SFX once, only when an enemy is actually hit.
+			if (!playedHitSfx && PlayerSFX.Instance != null)
+			{
+				PlayerSFX.Instance.PlayHitImpact();
+				playedHitSfx = true;
+			}
+
 			Vector2 dir = facingRight ? Vector2.right : Vector2.left;
 			eh.TakeDamage(swingDamage, dir);
 		}
+	}
+
+	/// <summary>
+	/// Animation Event entry point. Call this earlier in the swing (whoosh frame).
+	/// </summary>
+	public void OnSwingWhooshEvent()
+	{
+		if (PlayerSFX.Instance != null) PlayerSFX.Instance.PlayWhooshIfNoImpactThisFrame();
 	}
 
     private void FixedUpdate()

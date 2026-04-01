@@ -73,3 +73,18 @@ Assets/Plugins/Editor/JetBrains*
 # Cursor / local tooling (safe to ignore)
 .cursor/
 **/.cursor/
+
+# Imported asset packs (ignore entire folders)
+Assets/Sci-Fi Small Sound Pack/**
+Assets/SwordSoundPack/**
+Assets/Casual Game Sounds U6/**
+Assets/Inguz Media Studio/**
+Assets/Leohpaz/**
+Assets/Martial Hero/**
+Assets/Super Grotto Escape/**
+Assets/Warped City Assets/**
+
+# If you also want to ignore the sample template:
+Assets/Simple 2D Platformer BE2/**
+
+# Keep everything else in Assets/ under version control

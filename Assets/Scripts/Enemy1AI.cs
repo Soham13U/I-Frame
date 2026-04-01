@@ -158,18 +158,17 @@ public class Enemy1AI : MonoBehaviour
 			if (pc == null)
 				pc = lastShotHit.collider.GetComponentInParent<PlayerController>();
 
-			if (pc != null && pc.IsParrying())
+			if (pc != null)
 			{
-				Debug.Log($"Parried: Enemy1 shot was deflected at {lastHitPoint}", this);
-				if (pc != null) pc.SpawnParrySpark();
-				if (TimeEffects.Instance != null) TimeEffects.Instance.ParrySlowMo();
-				if (CameraShake2D.Instance != null) CameraShake2D.Instance.ShakeDefault();
-			}
-			else
-			{
-				if (pc != null)
-					pc.TakeDamage(damageAmount);
-				Debug.Log($"Damage Taken: Enemy1 hit player for {damageAmount} at {lastHitPoint}", this);
+				bool parried = pc.HandleIncomingAttack(lastShotHit.point);
+				if (parried)
+				{
+					Debug.Log($"Parried: Enemy1 shot was deflected at {lastHitPoint}", this);
+				}
+				else
+				{
+					Debug.Log($"Damage Taken: Enemy1 hit player for {damageAmount} at {lastHitPoint}", this);
+				}
 			}
 		}
 		else

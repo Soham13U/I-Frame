@@ -697,6 +697,7 @@ GameObject:
   m_Component:
   - component: {fileID: 780930419}
   - component: {fileID: 780930418}
+  - component: {fileID: 780930420}
   m_Layer: 0
   m_Name: Systems
   m_TagString: Untagged
@@ -736,6 +737,28 @@ Transform:
   m_Children: []
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &780930420
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 780930417}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 4cfe0884e1b96f24e8372d13d9dbf1c0, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::PlayerSFX
+  audioSource: {fileID: 2011520829}
+  swingClips:
+  - {fileID: 8300000, guid: df7087e4d8a8bb546bc08ce68632903f, type: 3}
+  - {fileID: 8300000, guid: 323e15cfe809e114ab92c9f4b25e8bc2, type: 3}
+  hitClips:
+  - {fileID: 8300000, guid: 2b8c207613cd58b4889b0cc6bf739f2c, type: 3}
+  - {fileID: 8300000, guid: 62e48d51911a9294aab8284e2a117204, type: 3}
+  parryClips:
+  - {fileID: 8300000, guid: c5955b1ca51d47245ae5e5e10395d910, type: 3}
+  - {fileID: 8300000, guid: a7736c1763bd76c4eb0d52aaad581deb, type: 3}
 --- !u!1 &796145708
 GameObject:
   m_ObjectHideFlags: 0
@@ -11932,7 +11955,7 @@ AudioSource:
   serializedVersion: 4
   OutputAudioMixerGroup: {fileID: 0}
   m_audioClip: {fileID: 0}
-  m_Resource: {fileID: 8300000, guid: d0bf1437f6cbd164baba5d661ba6e976, type: 3}
+  m_Resource: {fileID: 0}
   m_PlayOnAwake: 1
   m_Volume: 0.132
   m_Pitch: 1
@@ -12074,7 +12097,7 @@ PrefabInstance:
     - target: {fileID: 6761024640721945405, guid: 999356aff4cb97b4b9fa0022f06e2067, type: 3}
       propertyPath: parrySparkPrefab
       value: 
-      objectReference: {fileID: 2105968310509404722, guid: 9d98045320435d94a8eaf61e5bba20ad, type: 3}
+      objectReference: {fileID: 6192724089161036655, guid: e17d9a3f04750764c8c0a7a0461e4c3b, type: 3}
     - target: {fileID: 8777482342930153635, guid: 999356aff4cb97b4b9fa0022f06e2067, type: 3}
       propertyPath: m_Name
       value: Player
