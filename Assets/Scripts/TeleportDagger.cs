@@ -10,6 +10,7 @@ public class TeleportDagger : MonoBehaviour
 	[Header("Motion")]
 	[SerializeField] private float speed = 18f;
 	[SerializeField] private float maxFlightTime = 3.0f;
+	[SerializeField] private float spinSpeedDegPerSec = 720f;
 
 	[Header("Stick")]
 	[SerializeField] private LayerMask groundLayer;
@@ -27,6 +28,7 @@ public class TeleportDagger : MonoBehaviour
 	public bool IsStuck => stuck;
 	public Vector3 StuckPosition => transform.position;
 	public Vector2 LastHitNormal => lastHitNormal;
+	public Collider2D Collider => col;
 
 	private void Awake()
 	{
@@ -37,6 +39,8 @@ public class TeleportDagger : MonoBehaviour
 			rb.gravityScale = 0f;
 			rb.collisionDetectionMode = CollisionDetectionMode2D.Continuous;
 		}
+		// Use trigger so it doesn't physically collide with player/enemies
+		if (col != null) col.isTrigger = true;
 	}
 
 	public void Launch(Vector2 direction)
@@ -49,11 +53,25 @@ public class TeleportDagger : MonoBehaviour
 			rb.isKinematic = false;
 			rb.linearVelocity = direction.normalized * speed;
 		}
+		// Face flight direction initially (optional)
+		if (direction.sqrMagnitude > 0.0001f)
+		{
+			float angle = Mathf.Atan2(direction.y, direction.x) * Mathf.Rad2Deg;
+			transform.rotation = Quaternion.Euler(0f, 0f, angle - 90f);
+		}
 	}
 
 	private void Update()
 	{
-		if (stuck) return;
+		if (!stuck)
+		{
+			// Spin while flying
+			transform.Rotate(0f, 0f, -spinSpeedDegPerSec * Time.deltaTime, Space.Self);
+		}
+		else
+		{
+			return;
+		}
 		lifeTimer -= Time.deltaTime;
 		if (lifeTimer <= 0f)
 		{
@@ -63,15 +81,24 @@ public class TeleportDagger : MonoBehaviour
 		}
 	}
 
-	private void OnCollisionEnter2D(Collision2D collision)
+	private void OnTriggerEnter2D(Collider2D other)
 	{
 		if (stuck) return;
-		// Only stick to Ground layer
-		if (((1 << collision.collider.gameObject.layer) & groundLayer) == 0) return;
+		// Only react to Ground layer
+		if (((1 << other.gameObject.layer) & groundLayer) == 0) return;
 
-		Vector2 hitPoint = collision.GetContact(0).point;
-		Vector2 hitNormal = collision.GetContact(0).normal;
-		Stick(hitPoint, hitNormal, collision.collider.transform);
+		// Try a short raycast along current velocity to get point/normal
+		Vector2 dir = rb != null && rb.linearVelocity.sqrMagnitude > 0.0001f ? rb.linearVelocity.normalized : (Vector2)transform.right;
+		Vector2 rayStart = (Vector2)transform.position - dir * 0.2f;
+		RaycastHit2D hit = Physics2D.Raycast(rayStart, dir, 0.4f, groundLayer);
+		if (hit.collider != null)
+		{
+			Stick(hit.point, hit.normal, other.transform);
+		}
+		else
+		{
+			Stick(transform.position, Vector2.up, other.transform);
+		}
 	}
 
 	private void Stick(Vector2 hitPoint, Vector2 hitNormal, Transform hitTransform)
@@ -86,6 +113,9 @@ public class TeleportDagger : MonoBehaviour
 
 		// Place dagger slightly embedded along normal for a nice look
 		transform.position = hitPoint + hitNormal * stickNormalOffset;
+		// Align to surface normal on stick
+		float angle = Mathf.Atan2(hitNormal.y, hitNormal.x) * Mathf.Rad2Deg;
+		transform.rotation = Quaternion.Euler(0f, 0f, angle - 90f);
 		if (childToHit && hitTransform != null)
 		{
 			transform.SetParent(hitTransform, true);

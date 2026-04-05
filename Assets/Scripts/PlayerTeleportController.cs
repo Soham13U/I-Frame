@@ -17,6 +17,7 @@ public class PlayerTeleportController : MonoBehaviour
 	[SerializeField] private GameObject daggerPrefab;
 	[SerializeField] private Rigidbody2D playerRb;
 	[SerializeField] private Collider2D playerCollider;
+	[SerializeField] private CrosshairController crosshair;
 
 	[Header("Spawn")]
 	[SerializeField] private Vector2 spawnOffset = new Vector2(0.6f, 0.0f);
@@ -78,12 +79,34 @@ public class PlayerTeleportController : MonoBehaviour
 		if (activeDagger != null) return;
 		if (daggerPrefab == null) return;
 
-		Vector2 pos = (Vector2)transform.position + new Vector2(spawnOffset.x * (facingRight ? 1f : -1f), spawnOffset.y);
+		// Aim toward crosshair if present
+		Vector2 dir;
+		Vector2 playerPos = transform.position;
+		if (crosshair != null)
+		{
+			Vector2 aim = crosshair.GetWorldPosition();
+			dir = (aim - playerPos).normalized;
+			if (dir.sqrMagnitude < 0.0001f) dir = facingRight ? Vector2.right : Vector2.left;
+		}
+		else
+		{
+			dir = facingRight ? Vector2.right : Vector2.left;
+		}
+
+		// Compute spawn in front along aim direction
+		float forward = Mathf.Abs(spawnOffset.x);
+		Vector2 pos = playerPos + dir * forward + Vector2.up * spawnOffset.y;
+
 		GameObject go = Instantiate(daggerPrefab, pos, Quaternion.identity);
 		activeDagger = go.GetComponent<TeleportDagger>();
 		if (activeDagger == null) activeDagger = go.AddComponent<TeleportDagger>();
 
-		Vector2 dir = facingRight ? Vector2.right : Vector2.left;
+		// Ignore collision with the player
+		if (activeDagger.Collider != null && playerCollider != null)
+		{
+			Physics2D.IgnoreCollision(activeDagger.Collider, playerCollider, true);
+		}
+
 		activeDagger.Launch(dir);
 	}
 
