@@ -22,6 +22,7 @@ public class Enemy1AI : MonoBehaviour
 
 	[Header("Shooting")]
 	[SerializeField] private string playerTag = "Player";
+	[SerializeField] private bool ignoreOtherEnemiesInRaycast = true;
 	[SerializeField] private Vector2 rayOriginOffset = new Vector2(0.25f, 0f);
 	[SerializeField] private float shootCooldown = 0.8f; // legacy fallback
 	[SerializeField] private int damageAmount = 1;
@@ -309,8 +310,19 @@ public class Enemy1AI : MonoBehaviour
 		Vector2 origin = (Vector2)transform.position + new Vector2(rayOriginOffset.x * (facingRight ? 1f : -1f), rayOriginOffset.y);
 		Vector2 dir = facingRight ? Vector2.right : Vector2.left;
 
-		lastShotHit = Physics2D.Raycast(origin, dir, rayDistance);
-		lastHitPoint = lastShotHit.point;
+		// Important: if multiple enemies line up, a plain Raycast will hit the front enemy and
+		// never reach the player. We treat enemies as "transparent" for hitscan purposes,
+		// while still allowing world geometry to block shots.
+		if (ignoreOtherEnemiesInRaycast)
+		{
+			lastShotHit = GetFirstRelevantHit(origin, dir, rayDistance);
+		}
+		else
+		{
+			lastShotHit = Physics2D.Raycast(origin, dir, rayDistance);
+		}
+
+		lastHitPoint = lastShotHit.collider != null ? lastShotHit.point : (origin + dir * rayDistance);
 
 		if (lastShotHit.collider != null && lastShotHit.collider.CompareTag(playerTag))
 		{
@@ -340,6 +352,44 @@ public class Enemy1AI : MonoBehaviour
 
 		// Optional: visualize in editor while tuning
 		// Debug.DrawLine(origin, origin + dir * rayDistance, lastShotHitPlayer ? Color.green : Color.red, 0.25f);
+	}
+
+	/// <summary>
+	/// Returns the first "meaningful" hit in front of this enemy:
+	/// - Ignores triggers
+	/// - Ignores other enemies (anything with EnemyHealth in self/parent), so they don't block LoS
+	/// - Stops at the first non-enemy solid collider (e.g. walls/ground) OR the player
+	/// </summary>
+	private RaycastHit2D GetFirstRelevantHit(Vector2 origin, Vector2 dir, float distance)
+	{
+		RaycastHit2D[] hits = Physics2D.RaycastAll(origin, dir, distance);
+		if (hits == null || hits.Length == 0) return default;
+
+		for (int i = 0; i < hits.Length; i++)
+		{
+			var h = hits[i];
+			if (h.collider == null) continue;
+			if (h.collider.isTrigger) continue;
+
+			// Player always counts as a hit.
+			if (h.collider.CompareTag(playerTag)) return h;
+
+			// Treat other enemies as transparent for this hitscan.
+			if (IsEnemyCollider(h.collider)) continue;
+
+			// Any other collider blocks the shot (world geometry, props, etc).
+			return h;
+		}
+
+		// Only triggers/enemies were hit -> no meaningful hit.
+		return default;
+	}
+
+	private static bool IsEnemyCollider(Collider2D col)
+	{
+		if (col == null) return false;
+		// Most robust for this project: enemies have EnemyHealth somewhere on their hierarchy.
+		return col.GetComponent<EnemyHealth>() != null || col.GetComponentInParent<EnemyHealth>() != null;
 	}
 
 	private void SpawnMuzzleFlash()
