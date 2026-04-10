@@ -132,8 +132,14 @@ public class PlayerTeleportController : MonoBehaviour
 
 	private Vector2 FindSafeTeleportPosition(Vector2 center, Vector2 hitNormal)
 	{
-		// Start at dagger point + small lift along normal
-		Vector2 basePos = center + hitNormal.normalized * 0.05f;
+		Vector2 n = hitNormal.normalized;
+		if (n.sqrMagnitude < 0.0001f) n = Vector2.up;
+
+		// Clear the player capsule along the surface normal (floor needs ~half height, walls ~half width)
+		float extentAlongNormal =
+			Mathf.Abs(n.x) * (safeCapsuleSize.x * 0.5f + 0.06f) +
+			Mathf.Abs(n.y) * (safeCapsuleSize.y * 0.5f + 0.06f);
+		Vector2 basePos = center + n * extentAlongNormal;
 		if (!IsBlocked(basePos)) return basePos;
 
 		// Search rings around basePos

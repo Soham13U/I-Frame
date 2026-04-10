@@ -14,7 +14,7 @@ public class TeleportDagger : MonoBehaviour
 
 	[Header("Stick")]
 	[SerializeField] private LayerMask groundLayer;
-	[SerializeField] private float stickNormalOffset = 0.02f;
+	[SerializeField] private float stickNormalOffset = 0.06f;
 	[SerializeField] private bool childToHit = true;
 
 	[Header("References")]
@@ -87,18 +87,53 @@ public class TeleportDagger : MonoBehaviour
 		// Only react to Ground layer
 		if (((1 << other.gameObject.layer) & groundLayer) == 0) return;
 
-		// Try a short raycast along current velocity to get point/normal
-		Vector2 dir = rb != null && rb.linearVelocity.sqrMagnitude > 0.0001f ? rb.linearVelocity.normalized : (Vector2)transform.right;
-		Vector2 rayStart = (Vector2)transform.position - dir * 0.2f;
-		RaycastHit2D hit = Physics2D.Raycast(rayStart, dir, 0.4f, groundLayer);
-		if (hit.collider != null)
+		Vector2 pos = rb != null ? rb.position : (Vector2)transform.position;
+		Vector2 surfacePoint = other.ClosestPoint(pos);
+		Vector2 fromSurfaceToDagger = pos - surfacePoint;
+		bool daggerInsideSolid = other.OverlapPoint(pos);
+
+		Vector2 normal;
+		// When already inside the collider, (pos - closestPoint) often points deeper into the tile, not out.
+		if (!daggerInsideSolid && fromSurfaceToDagger.sqrMagnitude > 0.0004f)
 		{
-			Stick(hit.point, hit.normal, other.transform);
+			normal = fromSurfaceToDagger.normalized;
 		}
 		else
 		{
-			Stick(transform.position, Vector2.up, other.transform);
+			// Interior / degenerate overlap: recover contact from outside
+			RaycastHit2D probe = Physics2D.Raycast(pos + Vector2.up * 4f, Vector2.down, 8f, groundLayer);
+			if (probe.collider != null)
+			{
+				normal = probe.normal;
+				surfacePoint = probe.point;
+			}
+			else
+			{
+				Vector2 dir = rb != null && rb.linearVelocity.sqrMagnitude > 0.0001f
+					? rb.linearVelocity.normalized
+					: (Vector2)transform.right;
+				RaycastHit2D hit = Physics2D.Raycast(pos - dir * 0.35f, dir, 0.7f, groundLayer);
+				if (hit.collider != null)
+				{
+					normal = hit.normal;
+					surfacePoint = hit.point;
+				}
+				else
+				{
+					normal = Vector2.up;
+				}
+			}
 		}
+
+		// Snap normal/point from a cast into the collider when the path is unambiguous
+		RaycastHit2D refine = Physics2D.Raycast(pos - normal * 0.25f, normal, 0.5f, groundLayer);
+		if (refine.collider == other)
+		{
+			normal = refine.normal;
+			surfacePoint = refine.point;
+		}
+
+		Stick(surfacePoint, normal, other.transform);
 	}
 
 	private void Stick(Vector2 hitPoint, Vector2 hitNormal, Transform hitTransform)
